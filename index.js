@@ -53,13 +53,15 @@ app.post("/login", cors(), jsonParser, async (req, res) => {
   // Verify password
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
+  const userName = await User.find({ email: user.email });
   // Generate a JWT token
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
     expiresIn: "24h",
   });
 
-  res.status(200).json({ token, message: "Login successful" });
+  res
+    .status(200)
+    .json({ token, name: userName[0].name, message: "Login successful" });
 });
 
 //authenticate
@@ -89,7 +91,47 @@ app.get("/blogs", authenticateJWT, jsonParser, async (req, res) => {
     data: blog,
   });
 });
+//post
+app.post("/blogs", authenticateJWT, jsonParser, async (req, res) => {
+  const {
+    category,
+    title = "",
+    description = "",
+    content = "cnasdjkvnkjasd vkjv",
+    email,
+    image,
+    name = "s dj vsdkj v",
+  } = req.body;
+  const newBlog = new Blog({
+    title,
+    description,
+    category,
+    email,
+    content,
+    name,
+    image,
+  });
+  const savedBlog = await newBlog.save();
 
+  // Respond with the saved blog entry
+  res
+    .status(201)
+    .json({ message: "Blog created successfully", blog: savedBlog });
+});
+
+app.get("/blogs/:id", authenticateJWT, async (req, res) => {
+  const blog = await Blog.findById(req.params.id);
+  if (!blog) {
+    res.status(404).json({
+      success: false,
+      error: "not found",
+    });
+  }
+  res.status(200).json({
+    success: true,
+    data: blog,
+  });
+});
 //test user route
 app.get("/server/users", (req, res) => {
   res.send(users);
@@ -103,5 +145,3 @@ app.get("/server/blogs", (req, res) => {
 app.listen(PORT || 3000, () => {
   console.log(`server is running on port: ${PORT}`);
 });
-
-
